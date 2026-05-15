@@ -4,9 +4,7 @@ class AppColors {
   AppColors._();
 
   static const primary = Color(0xFF1A73E8);
-  static const secondary = Color(0xFF34A853);
   static const error = Color(0xFFEA4335);
-  static const warning = Color(0xFFFBBC04);
 
   static const surfaceLight = Color(0xFFF8F9FA);
   static const surfaceDark = Color(0xFF1E1E2E);

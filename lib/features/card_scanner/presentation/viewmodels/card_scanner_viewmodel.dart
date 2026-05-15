@@ -39,8 +39,8 @@ class CardScannerViewModel extends Notifier<CardScannerState> {
   Future<void> scanImage(String imagePath) async {
     state = state.copyWith(status: ScanState.scanning, scannedImagePath: imagePath);
 
-    final usecase = ref.read(scanCardUsecaseProvider);
-    final (card, failure) = await usecase(imagePath);
+    final repository = ref.read(cardScannerRepositoryProvider);
+    final (card, failure) = await repository.scanFromImage(imagePath);
 
     if (failure != null) {
       state = state.copyWith(status: ScanState.error, errorMessage: failure.message);

@@ -14,7 +14,7 @@ class PassbookRepositoryImpl implements PassbookRepository {
     try {
       final text = await _ocrService.extractText(imagePath);
       final details = PassbookParser.parsePassbook(text);
-      if (details == null) {
+      if (!details.hasAnyData) {
         return (null, const ParseFailure('No bank details found in image'));
       }
       return (details, null);

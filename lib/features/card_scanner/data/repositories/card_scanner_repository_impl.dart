@@ -14,7 +14,7 @@ class CardScannerRepositoryImpl implements CardScannerRepository {
     try {
       final text = await _ocrService.extractText(imagePath);
       final card = CardParser.parseCard(text);
-      if (card == null) {
+      if (!card.hasAnyData) {
         return (null, const ParseFailure('No valid card found in image'));
       }
       return (card, null);

@@ -47,14 +47,6 @@ class PassbookViewModel extends Notifier<PassbookState> {
       return;
     }
 
-    if (details == null) {
-      state = state.copyWith(
-        status: PassbookScanState.error,
-        errorMessage: 'No bank details found in image',
-      );
-      return;
-    }
-
     state = state.copyWith(status: PassbookScanState.success, bankDetails: details);
   }
 
