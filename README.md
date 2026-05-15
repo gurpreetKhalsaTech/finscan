@@ -65,7 +65,7 @@ flutter test
 | `permission_handler` | ^11.3.1 | Runtime camera permission requests |
 | `image_picker` | ^1.1.2 | Gallery image upload for passbook scanner |
 
-**No library is used for parsing.** All extraction logic (card number, expiry, IFSC, account number, holder name, PAN, account type, customer ID) is implemented manually using Dart regex and string operations.
+**No library is used for parsing.** All extraction logic (card number, expiry, IFSC, account number, holder name, bank name, branch name, MICR) is implemented manually using Dart regex and string operations. CIF / Customer ID / UCIC and PAN are detected and excluded from account number candidates but are not surfaced as output fields.
 
 ---
 
@@ -123,4 +123,4 @@ State is managed with Riverpod Notifiers. Navigation uses GoRouter with typed `e
 | **Parsing Logic (40%)** | Manual regex + heuristics for all fields; Luhn validation; OCR error correction; labeled-match-first strategy for ambiguous fields; CIF/Customer ID/UCIC exclusion; spaced account number group support |
 | **Code Quality (25%)** | Feature-first folder structure; single-responsibility classes; no business logic in widgets |
 | **OCR + Camera (20%)** | ML Kit on-device OCR; live camera with overlay guide; gallery fallback for passbook |
-| **Tests (15%)** | 60 tests across `LuhnValidator` (12), `CardParser` (25), `PassbookParser` (22), `WidgetTest` (1) — 53 passing, 7 failing |
+| **Tests (15%)** | 60 tests across `LuhnValidator` (12), `CardParser` (25), `PassbookParser` (22), `WidgetTest` (1) — 56 passing, 4 failing |
