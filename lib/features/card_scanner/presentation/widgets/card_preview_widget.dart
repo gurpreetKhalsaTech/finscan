@@ -36,7 +36,7 @@ class CardPreviewWidget extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 14)),
           const Spacer(),
           Text(
-            StringUtils.formatCardNumber(cardDetails.cardNumber),
+            StringUtils.formatCardNumber(cardDetails.cardNumber ?? ''),
             style: const TextStyle(
                 color: Colors.white, fontSize: 20, letterSpacing: 2, fontFamily: 'monospace'),
           ),
@@ -48,7 +48,7 @@ class CardPreviewWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('CARD HOLDER', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                  Text(cardDetails.cardHolderName,
+                  Text(cardDetails.cardHolderName ?? '—',
                       style: const TextStyle(color: Colors.white, fontSize: 14)),
                 ],
               ),
@@ -56,7 +56,7 @@ class CardPreviewWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text('EXPIRES', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                  Text(cardDetails.expiryDate,
+                  Text(cardDetails.expiryDate ?? '—',
                       style: const TextStyle(color: Colors.white, fontSize: 14)),
                 ],
               ),

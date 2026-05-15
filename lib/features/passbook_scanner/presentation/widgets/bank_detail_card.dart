@@ -23,8 +23,10 @@ class BankDetailCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const Divider(height: 24),
             ],
-            _CopyableRow(label: 'Account No.', value: bankDetails.accountNumber),
-            _CopyableRow(label: 'IFSC', value: bankDetails.ifscCode),
+            if (bankDetails.accountNumber != null)
+              _CopyableRow(label: 'Account No.', value: bankDetails.accountNumber!),
+            if (bankDetails.ifscCode != null)
+              _CopyableRow(label: 'IFSC', value: bankDetails.ifscCode!),
             if (bankDetails.accountHolderName != null)
               _CopyableRow(label: 'Name', value: bankDetails.accountHolderName!),
             if (bankDetails.branchName != null)

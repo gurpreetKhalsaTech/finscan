@@ -23,10 +23,13 @@ class CardResultScreen extends StatelessWidget {
             const SizedBox(height: 16),
             CardPreviewWidget(cardDetails: cardDetails),
             const SizedBox(height: 24),
-            MaskedCardWidget(cardNumber: cardDetails.cardNumber),
+            if (cardDetails.cardNumber != null)
+              MaskedCardWidget(cardNumber: cardDetails.cardNumber!),
             const SizedBox(height: 16),
-            _DetailRow(label: 'Holder', value: cardDetails.cardHolderName),
-            _DetailRow(label: 'Expiry', value: cardDetails.expiryDate),
+            if (cardDetails.cardHolderName != null)
+              _DetailRow(label: 'Holder', value: cardDetails.cardHolderName!),
+            if (cardDetails.expiryDate != null)
+              _DetailRow(label: 'Expiry', value: cardDetails.expiryDate!),
             if (cardDetails.bankName != null)
               _DetailRow(label: 'Bank', value: cardDetails.bankName!),
             if (cardDetails.cardNetwork != null)

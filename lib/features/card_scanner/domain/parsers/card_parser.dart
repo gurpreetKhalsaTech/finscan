@@ -1,6 +1,8 @@
 import '../../../../core/constants/app_constant.dart';
+
 import '../../../../core/constants/regex_patterns.dart';
 import '../../../../core/constants/validators.dart';
+
 import '../../../../core/utils/string_utils.dart';
 import '../../data/models/card_details.dart';
 
@@ -24,33 +26,29 @@ class CardParser {
   const CardParser._();
 
   /// Parses [rawText] (raw OCR output) into [CardDetails].
-  ///
-  /// Safe to call with messy, noisy, multi-line OCR text.
   static CardDetails parseCard(String rawText) {
-    if (rawText.trim().isEmpty) {
-      return const CardDetails();
-    }
+    if (rawText.trim().isEmpty) return const CardDetails();
 
     // Step 1: Normalise whitespace and uppercase
     final normalised = StringUtils.normaliseSpaces(rawText.toUpperCase());
 
-    // Step 2: Safe OCR digit fix (O→0, l→1 only) — safe on full text
+    // Step 2: Safe OCR digit fix (O→0, l→1 only)
     final ocrFixed = StringUtils.fixOcrDigitAmbiguity(normalised);
 
     // Step 3: Extract each field
-    final cardNumber = _extractCardNumber(ocrFixed);
+    final cardNumber = _extractCardNumber(ocrFixed, normalised);
     final expiryDate = _extractExpiry(ocrFixed);
-    final cardHolderName = _extractName(normalised); // Use pre-digit-fix for name
+    final cardHolderName = _extractName(normalised);
 
-    // Step 4: Validate card number
-    final isValid = cardNumber != null && Validators.isValidCardNumber(cardNumber);
+    // Step 4: Validate card
+    final isValid =
+        cardNumber != null && Validators.isValidCardNumber(cardNumber);
 
     // Step 5: Mask for display
-    final masked = cardNumber != null
-        ? StringUtils.formatMaskedCard(cardNumber)
-        : null;
+    final masked =
+    cardNumber != null ? StringUtils.formatMaskedCard(cardNumber) : null;
 
-    // Step 6: Detect card network and bank name from text
+    // Step 6: Detect network and bank
     final cardNetwork = _detectCardNetwork(cardNumber);
     final bankName = _detectBankName(normalised);
 
@@ -59,61 +57,56 @@ class CardParser {
       maskedCardNumber: masked,
       expiryDate: expiryDate,
       cardHolderName: cardHolderName,
-      isValid: isValid,
       cardNetwork: cardNetwork,
       bankName: bankName,
+      isValid: isValid,
     );
   }
 
-  // ── Private helpers ───────────────────────────────────────────
+  // ── Card Number ──────────────────────────────────────────────
 
-  /// Extracts card number from OCR-fixed text.
-  ///
-  /// Strategy:
-  ///   1. Match all candidates with regex.
-  ///   2. Clean each candidate (digits only).
-  ///   3. Apply aggressive OCR fix (S→5, B→8 etc) on digit-only string.
-  ///   4. Validate with Luhn — return first that passes.
-  ///   5. If none pass Luhn, return longest valid-length candidate.
-  static String? _extractCardNumber(String text) {
+  static String? _extractCardNumber(String ocrFixed, String original) {
     final candidates = <String>[];
 
-    for (final match in RegexPatterns.cardNumber.allMatches(text)) {
+    // Try OCR-fixed text first
+    for (final match in RegexPatterns.cardNumber.allMatches(ocrFixed)) {
       final raw = match.group(0) ?? '';
       final digits = StringUtils.digitsOnly(raw);
+      if (digits.length >= AppConstants.minCardNumberLength &&
+          digits.length <= AppConstants.maxCardNumberLength) {
+        candidates.add(digits);
+      }
+    }
 
-      // Apply aggressive fix only on the digit-only candidate
-      final fixed = StringUtils.fixOcrNumericErrors(digits);
-
-      if (fixed.length >= AppConstants.minCardNumberLength &&
-          fixed.length <= AppConstants.maxCardNumberLength) {
-        candidates.add(fixed);
+    // If nothing valid, try aggressive OCR fix on raw segments
+    if (candidates.isEmpty) {
+      for (final match in RegexPatterns.cardNumber.allMatches(original)) {
+        final raw = match.group(0) ?? '';
+        final fixed = StringUtils.fixOcrNumericErrors(raw);
+        final digits = StringUtils.digitsOnly(fixed);
+        if (digits.length >= AppConstants.minCardNumberLength &&
+            digits.length <= AppConstants.maxCardNumberLength) {
+          candidates.add(digits);
+        }
       }
     }
 
     if (candidates.isEmpty) return null;
 
-    // Prefer Luhn-valid candidate
+    // Prefer Luhn-valid
     for (final candidate in candidates) {
       if (Validators.isValidCardNumber(candidate)) return candidate;
     }
 
-    // No Luhn-valid candidate — return longest (partial scan fallback)
+    // No Luhn-valid — return longest (partial scan fallback)
     candidates.sort((a, b) => b.length.compareTo(a.length));
     return candidates.first;
   }
 
-  /// Extracts expiry date from OCR-fixed text.
-  ///
-  /// Real-world problem: IndusInd card back has BOTH:
-  ///   "VALID FROM 03/22  VALID THRU 03/27"
-  ///
-  /// Strategy:
-  ///   1. Try to find "VALID THRU" specifically first.
-  ///   2. Fall back to any expiry match if no labeled one found.
-  ///   3. Normalise to MM/YY format.
+  // ── Expiry ───────────────────────────────────────────────────
+
   static String? _extractExpiry(String text) {
-    // Priority: look for "VALID THRU" / "VALID THROUGH" / "EXPIRY" / "EXP" label
+    // Priority: labeled VALID THRU / EXPIRY
     final labeledPattern = RegExp(
       r'(?:VALID\s*(?:THRU|THROUGH|TO)|EXPIRY|EXPIRES?|EXP\.?|GOOD\s*THRU)'
       r'[\s\:\.]?\s*(0[1-9]|1[0-2])[\/\-\s](20[2-3]\d|\d{2})',
@@ -126,8 +119,7 @@ class CardParser {
           labeledMatch.group(1)!, labeledMatch.group(2)!);
     }
 
-    // Fallback: any MM/YY or MMYY pattern
-    // Collect all matches and return the latest future date
+    // Fallback: any MM/YY-style match; pick latest
     final allMatches = <String>[];
     for (final match in RegexPatterns.expiry.allMatches(text)) {
       final full = match.group(0) ?? '';
@@ -137,20 +129,16 @@ class CardParser {
 
     if (allMatches.isEmpty) return null;
 
-    // Return the latest expiry (furthest in future = VALID THRU, not FROM)
     allMatches.sort((a, b) => _expiryToInt(b).compareTo(_expiryToInt(a)));
     return allMatches.first;
   }
 
-  /// Normalises month + year strings to "MM/YY" format.
   static String _normaliseExpiry(String month, String year) {
     final mm = month.padLeft(2, '0');
-    // Convert 4-digit year to 2-digit
     final yy = year.length == 4 ? year.substring(2) : year;
     return '$mm/$yy';
   }
 
-  /// Parses a raw expiry match string into "MM/YY" format.
   static String? _parseExpiryFromRaw(String raw) {
     final cleaned = raw.trim();
     final sep = RegExp(r'[\/\-\s]');
@@ -165,7 +153,6 @@ class CardParser {
         }
       }
     } else {
-      // MMYY no separator
       final digits = StringUtils.digitsOnly(cleaned);
       if (digits.length == 4) {
         return _normaliseExpiry(digits.substring(0, 2), digits.substring(2));
@@ -174,7 +161,6 @@ class CardParser {
     return null;
   }
 
-  /// Converts "MM/YY" to an integer for comparison (YYMM order).
   static int _expiryToInt(String mmyy) {
     final parts = mmyy.split('/');
     if (parts.length != 2) return 0;
@@ -183,12 +169,8 @@ class CardParser {
     return yy * 100 + mm;
   }
 
-  /// Extracts cardholder name from original (non-digit-fixed) text.
-  ///
-  /// Strategy:
-  ///   1. Try labeled name pattern first ("CARD HOLDER: ...")
-  ///   2. Fall back to line-based heuristic — find uppercase name-like lines.
-  ///   3. Skip all known noise phrases from [AppConstants.cardNoisePhrases].
+  // ── Name ─────────────────────────────────────────────────────
+
   static String? _extractName(String text) {
     // Try labeled match first
     final labeledMatch = RegexPatterns.labeledName.firstMatch(text);
@@ -198,7 +180,7 @@ class CardParser {
       if (_isPlausibleName(name)) return name;
     }
 
-    // Line-based heuristic: find lines that look like a person's name
+    // Line-based heuristic
     final lines = text.split(RegExp(r'[\n\r]+'));
     final nameCandidates = <String>[];
 
@@ -211,21 +193,13 @@ class CardParser {
 
     if (nameCandidates.isEmpty) return null;
 
-    // Return the best candidate — prefer longer names (first + last name)
     nameCandidates.sort((a, b) => b.length.compareTo(a.length));
     return nameCandidates.first;
   }
 
-  /// Returns true if [line] looks like a person's name.
-  ///
-  /// Rules:
-  ///   • 2–40 characters
-  ///   • Contains only letters and spaces
-  ///   • Has at least 2 words (first + last name) OR single word ≥4 chars
-  ///   • Does NOT contain digits
   static bool _isPlausibleName(String line) {
     if (line.length < 2 || line.length > 40) return false;
-    if (RegExp(r'\d').hasMatch(line)) return false; // No digits in names
+    if (RegExp(r'\d').hasMatch(line)) return false;
     if (!RegExp(r'^[A-Z][A-Z\s\.\,]+$').hasMatch(line)) return false;
 
     final words = line.trim().split(RegExp(r'\s+'));
@@ -234,16 +208,15 @@ class CardParser {
     return true;
   }
 
-  /// Returns true if [line] is a known noise phrase (not a name).
   static bool _isNoiseLine(String line) {
     final upper = line.toUpperCase().trim();
     for (final noise in AppConstants.cardNoisePhrases) {
       if (upper == noise || upper.contains(noise)) return true;
     }
-    // Also skip bank names and card type words
     const bankKeywords = [
       'BANK', 'VISA', 'MASTERCARD', 'RUPAY', 'AMEX',
       'PLATINUM', 'GOLD', 'SIGNATURE', 'LEGEND', 'CLASSIC',
+      'INFINITE', 'WORLD', 'TITANIUM',
     ];
     for (final kw in bankKeywords) {
       if (upper.contains(kw)) return true;
@@ -251,34 +224,44 @@ class CardParser {
     return false;
   }
 
-  /// Detects card network from the card number prefix (IIN/BIN ranges).
+  // ── Network & Bank ───────────────────────────────────────────
+
+  /// Detects card network from IIN/BIN prefix.
+  /// Reference: ISO/IEC 7812 + RuPay BIN ranges.
   static String? _detectCardNetwork(String? cardNumber) {
     if (cardNumber == null || cardNumber.isEmpty) return null;
+
+    // Visa: starts with 4
     if (cardNumber.startsWith('4')) return 'Visa';
+
+    // Mastercard: 51-55 or 2221-2720
     if (RegExp(r'^5[1-5]').hasMatch(cardNumber)) return 'Mastercard';
-    if (cardNumber.startsWith('34') || cardNumber.startsWith('37')) return 'Amex';
-    if (RegExp(r'^6').hasMatch(cardNumber)) return 'RuPay';
+    if (RegExp(r'^(222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)')
+        .hasMatch(cardNumber)) {
+      return 'Mastercard';
+    }
+
+    // Amex: 34 or 37
+    if (cardNumber.startsWith('34') || cardNumber.startsWith('37')) {
+      return 'Amex';
+    }
+
+    // RuPay: 60, 6521, 6522, 81, 82, 508
+    if (RegExp(r'^(60|6521|6522|508|81|82)').hasMatch(cardNumber)) {
+      return 'RuPay';
+    }
+
+    // Diners: 300-305, 36, 38
+    if (RegExp(r'^(30[0-5]|36|38)').hasMatch(cardNumber)) return 'Diners';
+
+    // Discover: 6011, 622126-622925, 644-649, 65
+    if (RegExp(r'^(6011|65|64[4-9])').hasMatch(cardNumber)) return 'Discover';
+
     return null;
   }
 
-  /// Detects issuing bank name from the OCR text.
   static String? _detectBankName(String text) {
-    const banks = [
-      'STATE BANK OF INDIA',
-      'HDFC BANK',
-      'ICICI BANK',
-      'AXIS BANK',
-      'KOTAK MAHINDRA BANK',
-      'INDUSIND BANK',
-      'PUNJAB NATIONAL BANK',
-      'BANK OF BARODA',
-      'CANARA BANK',
-      'UNION BANK OF INDIA',
-      'YES BANK',
-      'IDFC FIRST BANK',
-      'INDIAN BANK',
-    ];
-    for (final bank in banks) {
+    for (final bank in AppConstants.knownBanks) {
       if (text.contains(bank)) return bank;
     }
     return null;

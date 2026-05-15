@@ -65,19 +65,21 @@ flutter test
 | `permission_handler` | ^11.3.1 | Runtime camera permission requests |
 | `image_picker` | ^1.1.2 | Gallery image upload for passbook scanner |
 
-**No library is used for parsing.** All extraction logic (card number, expiry, IFSC, account number, holder name) is implemented manually using Dart regex and string operations.
+**No library is used for parsing.** All extraction logic (card number, expiry, IFSC, account number, holder name, PAN, account type, customer ID) is implemented manually using Dart regex and string operations.
 
 ---
 
 ## Assumptions Made
 
-1. **Card numbers are 16 digits** in four groups of four (Visa, Mastercard, RuPay, Amex 15-digit excluded from group pattern but still Luhn-checked).
-2. **Card holder name appears above the card number** in ALL-CAPS on the physical card. If OCR returns it elsewhere, the labeled fallback (`NAME:`, `A/C NAME:`) is used for passbooks.
+1. **Card numbers are 13–19 digits** — covers Visa (13/16), Mastercard (16), RuPay (16), Amex (15), Discover (16), and Diners (14). The card number regex matches digit groups across that range.
+2. **Card holder name appears above the card number** in ALL-CAPS on the physical card. If OCR returns it elsewhere, labeled fallbacks (`NAME:`, `A/C NAME:`) are used for passbooks.
 3. **Expiry year is two digits** in the range 20–39, covering years 2020–2039. Years outside this range are not matched to avoid false positives.
-4. **IFSC codes are 11 characters** — 4 uppercase letters, literal `0`, then 6 alphanumeric characters. The IFSC match is run on the *original* OCR text before any numeric correction, because corrections like `S→5` or `B→8` would corrupt the alphabetic bank prefix (e.g. `SBIN` → `581N`).
-5. **Account numbers are 9–18 digits.** When multiple candidates exist, a labeled match (`A/C NO`, `ACCOUNT NO`) is preferred; otherwise the longest candidate is selected, since account numbers tend to be longer than MICR codes.
-6. **OCR language is Latin/English.** ML Kit is initialised with `TextRecognitionScript.latin`. Passbooks in regional-script-only text will not parse correctly.
-7. **Single card / single passbook page per scan.** The app captures one image at a time and parses it as a single document.
+4. **IFSC codes are 11 characters** — 4 uppercase letters, literal `0`, then 6 alphanumeric characters. IFSC is extracted from the *original* OCR text before any numeric correction, because corrections like `S→5` or `B→8` would corrupt the alphabetic bank prefix (e.g. `SBIN` → `581N`).
+5. **Account numbers are 9–18 digits** (covers SBI=11, HDFC=14, ICICI=12, Axis=15, Kotak=14, PNB=16, etc.). When multiple candidates exist, a labeled match (`A/C NO`, `ACCOUNT NO`, `SB A/C NO`) is preferred; otherwise the longest candidate is selected.
+6. **Account number labels may contain spaced digit groups** (e.g. `1141 2952 622`). The labeled-account regex strips spaces after extraction.
+7. **CIF / Customer ID / UCIC are bank-specific names for the same concept.** SBI CIF is 11 digits — the same length as an SBI account number — so it must be labeled and excluded from account number candidates. HDFC uses "Customer ID"; Union Bank uses "UCIC". All variants are matched and excluded.
+8. **OCR language is Latin/English.** ML Kit is initialised with `TextRecognitionScript.latin`. Passbooks in regional-script-only text will not parse correctly.
+9. **Single card / single passbook page per scan.** The app captures one image at a time and parses it as a single document.
 
 ---
 
@@ -87,7 +89,7 @@ flutter test
 |------|--------|
 | **CVV extraction** | CVV must never be stored or displayed per PCI-DSS guidelines. The regex exists in `RegexPatterns` for detection only; it is intentionally not surfaced in the UI or model. |
 | **Backend / cloud OCR** | Explicitly prohibited by the requirements. All processing is on-device. |
-| **Card scanner gallery upload** | The card scanner is camera-only. The passbook scanner supports both camera and gallery (`image_picker`). Cards are typically scanned live (not photographed separately), so gallery upload was omitted for the card flow. |
+| **Card scanner gallery upload** | The card scanner is camera-only. The passbook scanner supports both camera and gallery (`image_picker`). Cards are typically scanned live, so gallery upload was omitted for the card flow. |
 | **Multi-page passbook scanning** | Out of scope. The feature targets the front/data page of a passbook. Scanning transaction pages is a different problem domain. |
 | **Tablet / landscape layouts** | No layout requirement was specified. The UI is portrait-first and functional on tablets but not optimised. |
 | **Passbook account number masking** | Account numbers on passbooks are typically shared openly (e.g. for NEFT/UPI). Unlike card numbers, masking them would reduce usability with no security benefit in this context. |
@@ -106,6 +108,10 @@ lib/
 └── shared/             # OcrService, CameraService, reusable widgets
 ```
 
+**`CardDetails`** fields: `cardNumber`, `maskedCardNumber`, `expiryDate`, `cardHolderName`, `cardNetwork`, `bankName`, `isValid`.
+
+**`BankDetails`** fields: `accountHolderName`, `accountNumber`, `ifscCode`, `micrCode`, `bankName`, `branchName`.
+
 State is managed with Riverpod Notifiers. Navigation uses GoRouter with typed `extra` payloads. Parsing is fully pure-Dart and covered by unit tests.
 
 ---
@@ -114,7 +120,7 @@ State is managed with Riverpod Notifiers. Navigation uses GoRouter with typed `e
 
 | Area | Implementation |
 |------|----------------|
-| **Parsing Logic (40%)** | Manual regex + heuristics for all fields; Luhn validation; OCR error correction; labeled-match-first strategy for ambiguous fields |
+| **Parsing Logic (40%)** | Manual regex + heuristics for all fields; Luhn validation; OCR error correction; labeled-match-first strategy for ambiguous fields; CIF/Customer ID/UCIC exclusion; spaced account number group support |
 | **Code Quality (25%)** | Feature-first folder structure; single-responsibility classes; no business logic in widgets |
 | **OCR + Camera (20%)** | ML Kit on-device OCR; live camera with overlay guide; gallery fallback for passbook |
-| **Tests (15%)** | 59 unit tests across `LuhnValidator` (12), `CardParser` (25), `PassbookParser` (22) — all passing |
+| **Tests (15%)** | 60 tests across `LuhnValidator` (12), `CardParser` (25), `PassbookParser` (22), `WidgetTest` (1) — 53 passing, 7 failing |

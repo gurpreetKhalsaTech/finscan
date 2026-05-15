@@ -6,7 +6,6 @@
 ///     would break patterns like SBIN, HDFC, etc.
 library;
 
-
 class RegexPatterns {
   RegexPatterns._();
 
@@ -20,7 +19,6 @@ class RegexPatterns {
 
   /// Expiry date — handles:
   ///   MM/YY  MM-YY  MM YY  MMYY  MM/YYYY  MM-YYYY
-  ///   with optional labels: "VALID THRU", "EXP", "EXPIRES", etc.
   static final expiry = RegExp(
     r'(?:VALID\s*(?:THRU|THROUGH|TO)|EXPIRY|EXPIRES?|EXP)[\s\:\.]?'
     r'\s*(0[1-9]|1[0-2])[\/\-\s](20[2-3]\d|\d{2})'
@@ -31,26 +29,28 @@ class RegexPatterns {
 
   // ── Passbook — HIGH PRIORITY (labeled) ───────────────────────
 
-  /// Labeled account number — highest confidence match.
-  /// Handles: A/C NO, ACCOUNT NO, ACC NO, ACCOUNT NUMBER, A/C NUMBER, etc.
+  /// Labeled account number — handles spaced groups like "1141 2952 622".
+  /// Supports: A/C NO, ACCOUNT NO, ACC NO, ACCOUNT NUMBER, SB A/C NO, CA A/C NO, etc.
   static final labeledAccountNumber = RegExp(
-    r'(?:A(?:\/C|CC(?:OUNT)?)(?:\s*(?:NO\.?|NUM(?:BER)?))?'
-    r'|ACCOUNT\s*(?:NO\.?|NUM(?:BER)?)?)'
-    r'[\s\.\:\-]+(\d[\d\s]{7,19}\d)',
+    r'(?:(?:SB|CA|OD|CC)\s+)?'
+    r'(?:A(?:\/C|CC(?:OUNT)?|CCT)|ACCOUNT)'
+    r'(?:\s*(?:NO\.?|NUM(?:BER)?))?'
+    r'[\s\.\:\-]+(\d[\d\s\-]{7,22}\d)',
     caseSensitive: false,
   );
 
-  /// CIF (Customer Information File) number label.
-  /// MUST be extracted and EXCLUDED from account number candidates.
-  /// SBI CIF = 11 digits — identical length to SBI account number!
+  /// CIF / Customer ID / UCIC — bank-specific names for the same thing.
+  /// SBI: CIF (11 digits), HDFC: Customer ID (8 digits), Union: UCIC.
   static final cifLabel = RegExp(
-    r'CIF(?:\s*(?:NO\.?|NUM(?:BER)?|ID))?[\s\.\:\-]+(\d{7,12})',
+    r'(?:CIF|CUSTOMER\s*ID|CUST\s*ID|CUSTOMER\s*NO\.?|CUSTOMER\s*NUMBER|UCIC)'
+    r'(?:\s*(?:NO\.?|NUM(?:BER)?|ID))?'
+    r'[\s\.\:\-]+(\d{7,12})',
     caseSensitive: false,
   );
 
   /// MICR code label — 9 digits, must be excluded.
   static final micrLabel = RegExp(
-    r'MICR(?:\s*CODE)?[\s\.\:\-]+(\d{9})',
+    r'MICR(?:\s*(?:CODE|NO\.?))?[\s\.\:\-]+(\d{9})',
     caseSensitive: false,
   );
 
@@ -62,13 +62,23 @@ class RegexPatterns {
 
   /// Phone / mobile number label — must be excluded.
   static final labeledPhoneNumber = RegExp(
-    r'(?:PHONE|MOBILE|MOB\.?|PH\.?|TEL\.?|CONTACT)[\s\.\:\-]+([\d\s\-\+]{7,15})',
+    r'(?:PHONE|MOBILE|MOB\.?|PH\.?|TEL\.?|TELEPHONE|CONTACT)(?:\s*NO\.?)?'
+    r'[\s\.\:\-]+([\d\s\-\+]{7,15})',
     caseSensitive: false,
   );
 
-  /// PPO / Nomination Reg / Page No — short labeled numbers to exclude.
+  /// PPO / Nomination / Page / PIN code — short labeled numbers to exclude.
   static final otherLabeledNumbers = RegExp(
-    r'(?:PPO\s*(?:NO\.?|NUMBER)?|NOM(?:INATION)?\s*REG\s*(?:NO\.?)?|PAGE\s*(?:NO\.?)?|PIN\s*CODE|PINCODE)'
+    r'(?:PPO\s*(?:NO\.?|NUMBER)?'
+    r'|NOM(?:INATION)?\s*REG\s*(?:NO\.?)?'
+    r'|PAGE\s*(?:NO\.?)?'
+    r'|PIN\s*CODE'
+    r'|PINCODE'
+    r'|PIN\s*(?:NO\.?)?'
+    r'|CHEQUE\s*(?:NO\.?|NUMBER)?'
+    r'|CHQ\s*(?:NO\.?|NUMBER)?'
+    r'|BSR\s*CODE'
+    r'|SWIFT(?:\s*CODE)?)'
     r'[\s\.\:\-]+(\d{4,12})',
     caseSensitive: false,
   );
@@ -76,8 +86,10 @@ class RegexPatterns {
   // ── Passbook — FALLBACK (unlabeled) ──────────────────────────
 
   /// Fallback: any standalone 9–18 digit number.
-  /// Only used after all labeled exclusions have been collected.
-  static final accountNumber = RegExp(r'\b\d{9,18}\b');
+  /// Also matches spaced groups: "1141 2952 622" → cleaned to "11412952622".
+  static final accountNumber = RegExp(
+    r'\b\d[\d\s\-]{8,22}\d\b',
+  );
 
   // ── Common ───────────────────────────────────────────────────
 
@@ -85,20 +97,39 @@ class RegexPatterns {
   /// Match this against ORIGINAL text (before OCR digit correction).
   static final ifscCode = RegExp(r'\b[A-Z]{4}0[A-Z0-9]{6}\b');
 
+  /// IFSC with label — higher confidence match.
+  static final ifscLabel = RegExp(
+    r'IFSC(?:\s*(?:CODE|NO\.?|NUMBER))?[\s\.\:\-]+([A-Z]{4}0[A-Z0-9]{6})',
+    caseSensitive: false,
+  );
+
   /// MICR code standalone — 9 digits.
   static final micrCode = RegExp(r'\b\d{9}\b');
 
-  /// Labeled name — for passbook name extraction.
-  /// Handles: NAME, A/C HOLDER, ACCOUNT HOLDER, CARD HOLDER.
+  /// Labeled name — handles both UPPERCASE and Title Case names.
+  /// HDFC/ICICI passbooks often print names in title case.
   static final labeledName = RegExp(
-    r'(?:NAME|A\/C\s*HOLDER(?:\s*NAME)?|ACCOUNT\s*HOLDER(?:\s*NAME)?|CARD\s*HOLDER(?:\s*NAME)?)'
-    r'[\s\.\:\-]+([A-Z][A-Z\s\,\.]{2,60})',
+    r'(?:NAME|A\/C\s*HOLDER(?:\s*NAME)?'
+    r'|ACCOUNT\s*HOLDER(?:\s*NAME)?'
+    r'|CARD\s*HOLDER(?:\s*NAME)?'
+    r'|HOLDER\s*NAME)'
+    r'[\s\.\:\-]+([A-Za-z][A-Za-z\s\,\.]{2,60})',
     caseSensitive: false,
   );
 
   /// Customer service / toll-free phone numbers — exclude from all number matching.
   /// e.g. "1800 425 00 000" or "1860 267 7777" on card backs.
   static final tollFreeNumber = RegExp(
-    r'\b(?:1800|1860|1900)\s*\d[\d\s]{6,12}\b',
+    r'\b(?:1800|1860|1900|0124|022|011|080|044|033)\s*\d[\d\s\-]{6,15}\b',
   );
+
+  /// Date patterns — exclude from number matching.
+  /// DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
+  static final datePattern = RegExp(
+    r'\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b|\b\d{4}[\/\-]\d{2}[\/\-]\d{2}\b',
+  );
+
+  /// Time pattern HH:MM:SS or HH:MM — exclude.
+  static final timePattern = RegExp(r'\b\d{1,2}:\d{2}(?::\d{2})?\b');
+
 }

@@ -5,12 +5,12 @@ class CardDetails {
     this.maskedCardNumber,
     this.expiryDate,
     this.cardHolderName,
-    this.bankName,
     this.cardNetwork,
+    this.bankName,
     this.isValid = false,
   });
 
-  /// Raw 16-digit (or 15-digit for Amex) card number string.
+  /// Raw digits-only card number (13–19 digits).
   final String? cardNumber;
 
   /// Masked display string e.g. "**** **** **** 3995"
@@ -22,11 +22,11 @@ class CardDetails {
   /// Cardholder name as printed on card.
   final String? cardHolderName;
 
-  /// Issuing bank name if detectable.
-  final String? bankName;
-
-  /// Card network e.g. "Visa", "Mastercard", "RuPay".
+  /// Card network: Visa / Mastercard / RuPay / Amex / Discover / Diners.
   final String? cardNetwork;
+
+  /// Issuing bank if detected in OCR text.
+  final String? bankName;
 
   /// True if cardNumber passes Luhn validation.
   final bool isValid;
@@ -35,7 +35,6 @@ class CardDetails {
   bool get hasExpiry => expiryDate != null && expiryDate!.isNotEmpty;
   bool get hasName => cardHolderName != null && cardHolderName!.isNotEmpty;
 
-  /// Returns true if at least one field was successfully extracted.
   bool get hasAnyData => hasCardNumber || hasExpiry || hasName;
 
   CardDetails copyWith({
@@ -43,8 +42,8 @@ class CardDetails {
     String? maskedCardNumber,
     String? expiryDate,
     String? cardHolderName,
-    String? bankName,
     String? cardNetwork,
+    String? bankName,
     bool? isValid,
   }) {
     return CardDetails(
@@ -52,8 +51,8 @@ class CardDetails {
       maskedCardNumber: maskedCardNumber ?? this.maskedCardNumber,
       expiryDate: expiryDate ?? this.expiryDate,
       cardHolderName: cardHolderName ?? this.cardHolderName,
-      bankName: bankName ?? this.bankName,
       cardNetwork: cardNetwork ?? this.cardNetwork,
+      bankName: bankName ?? this.bankName,
       isValid: isValid ?? this.isValid,
     );
   }
@@ -63,5 +62,7 @@ class CardDetails {
       'cardNumber: $cardNumber, '
       'expiry: $expiryDate, '
       'name: $cardHolderName, '
+      'network: $cardNetwork, '
+      'bank: $bankName, '
       'isValid: $isValid)';
 }

@@ -12,16 +12,10 @@
 class LuhnValidator {
   LuhnValidator._();
 
-  /// Returns true if [cardNumber] passes the Luhn check.
-  /// Alias matching the assignment spec signature: `bool isValidCard(String cardNumber)`.
+  /// Assignment-spec signature: `bool isValidCard(String cardNumber)`.
   static bool isValidCard(String cardNumber) => isValid(cardNumber);
 
-  /// Returns true if [cardNumber] (digits only string) passes the Luhn check.
-  ///
-  /// Example valid numbers:
-  ///   4111111111111111  → true  (Visa test number)
-  ///   5500000000000004  → true  (Mastercard test number)
-  ///   1234567890123456  → false (random — fails Luhn)
+  /// Returns true if [cardNumber] passes the Luhn check.
   static bool isValid(String cardNumber) {
     final digits = cardNumber.replaceAll(RegExp(r'\D'), '');
 
@@ -30,13 +24,11 @@ class LuhnValidator {
     int sum = 0;
     bool shouldDouble = false;
 
-    // Iterate from right to left
     for (int i = digits.length - 1; i >= 0; i--) {
       int digit = int.parse(digits[i]);
 
       if (shouldDouble) {
         digit *= 2;
-        // If doubling gives > 9, subtract 9 (equivalent to summing both digits)
         if (digit > 9) digit -= 9;
       }
 
@@ -47,11 +39,9 @@ class LuhnValidator {
     return sum % 10 == 0;
   }
 
-  /// Returns the Luhn check digit for a partial card number (without check digit).
-  /// Useful for generating valid test numbers.
+  /// Returns the Luhn check digit for a partial number (no check digit appended).
   static int calculateCheckDigit(String partialNumber) {
     final digits = partialNumber.replaceAll(RegExp(r'\D'), '');
-    // Append 0 as placeholder for check digit position
     final withZero = '${digits}0';
 
     int sum = 0;
@@ -67,7 +57,6 @@ class LuhnValidator {
       shouldDouble = !shouldDouble;
     }
 
-    final checkDigit = (10 - (sum % 10)) % 10;
-    return checkDigit;
+    return (10 - (sum % 10)) % 10;
   }
 }
