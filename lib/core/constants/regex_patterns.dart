@@ -6,6 +6,7 @@
 ///     would break patterns like SBIN, HDFC, etc.
 library;
 
+
 class RegexPatterns {
   RegexPatterns._();
 
@@ -27,9 +28,6 @@ class RegexPatterns {
     r'|\b(0[1-9]|1[0-2])(2[0-9]|3[0-9])(?!\d)\b',
     caseSensitive: false,
   );
-
-  /// CVV — 3 or 4 digits standalone (used on back of card).
-  static final cvv = RegExp(r'\b\d{3,4}\b');
 
   // ── Passbook — HIGH PRIORITY (labeled) ───────────────────────
 

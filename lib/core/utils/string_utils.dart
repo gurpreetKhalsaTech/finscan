@@ -49,10 +49,6 @@ class StringUtils {
   static String digitsOnly(String input) =>
       input.replaceAll(RegExp(r'\D'), '');
 
-  /// Returns true if [input] contains only digit characters.
-  static bool isAllDigits(String input) =>
-      input.isNotEmpty && RegExp(r'^\d+$').hasMatch(input);
-
   // ── Card Formatting ──────────────────────────────────────────
 
   /// Formats a digit string as groups of 4: "XXXX XXXX XXXX XXXX".
@@ -81,14 +77,6 @@ class StringUtils {
     return buffer.toString();
   }
 
-  /// Masks all but the last 4 digits with '*'.
-  /// e.g. "4147524980423995" → "************3995"
-  static String maskCardNumber(String cardNumber) {
-    final digits = digitsOnly(cardNumber);
-    if (digits.length < 4) return '*' * digits.length;
-    return '${'*' * (digits.length - 4)}${digits.substring(digits.length - 4)}';
-  }
-
   /// Combines masking + grouping for display.
   /// e.g. "4147524980423995" → "**** **** **** 3995"
   static String formatMaskedCard(String cardNumber) {
@@ -104,15 +92,6 @@ class StringUtils {
   /// Normalises whitespace: trims and collapses multiple spaces to one.
   static String normaliseSpaces(String input) =>
       input.trim().replaceAll(RegExp(r'\s{2,}'), ' ');
-
-  /// Returns [input] with each word title-cased.
-  /// e.g. "GURPREET SINGH" → "Gurpreet Singh"
-  static String toTitleCase(String input) {
-    return input.toLowerCase().replaceAllMapped(
-      RegExp(r'\b\w'),
-          (m) => m.group(0)!.toUpperCase(),
-    );
-  }
 
   /// Strips common trailing noise from an extracted name line.
   /// Removes things like "S/O", "D/O", "W/O", "H/O" relationship suffixes
