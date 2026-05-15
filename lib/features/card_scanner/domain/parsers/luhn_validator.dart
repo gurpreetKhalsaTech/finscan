@@ -12,6 +12,10 @@
 class LuhnValidator {
   LuhnValidator._();
 
+  /// Returns true if [cardNumber] passes the Luhn check.
+  /// Alias matching the assignment spec signature: `bool isValidCard(String cardNumber)`.
+  static bool isValidCard(String cardNumber) => isValid(cardNumber);
+
   /// Returns true if [cardNumber] (digits only string) passes the Luhn check.
   ///
   /// Example valid numbers:

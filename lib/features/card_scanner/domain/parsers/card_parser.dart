@@ -50,12 +50,18 @@ class CardParser {
         ? StringUtils.formatMaskedCard(cardNumber)
         : null;
 
+    // Step 6: Detect card network and bank name from text
+    final cardNetwork = _detectCardNetwork(cardNumber);
+    final bankName = _detectBankName(normalised);
+
     return CardDetails(
       cardNumber: cardNumber,
       maskedCardNumber: masked,
       expiryDate: expiryDate,
       cardHolderName: cardHolderName,
       isValid: isValid,
+      cardNetwork: cardNetwork,
+      bankName: bankName,
     );
   }
 
@@ -243,5 +249,38 @@ class CardParser {
       if (upper.contains(kw)) return true;
     }
     return false;
+  }
+
+  /// Detects card network from the card number prefix (IIN/BIN ranges).
+  static String? _detectCardNetwork(String? cardNumber) {
+    if (cardNumber == null || cardNumber.isEmpty) return null;
+    if (cardNumber.startsWith('4')) return 'Visa';
+    if (RegExp(r'^5[1-5]').hasMatch(cardNumber)) return 'Mastercard';
+    if (cardNumber.startsWith('34') || cardNumber.startsWith('37')) return 'Amex';
+    if (RegExp(r'^6').hasMatch(cardNumber)) return 'RuPay';
+    return null;
+  }
+
+  /// Detects issuing bank name from the OCR text.
+  static String? _detectBankName(String text) {
+    const banks = [
+      'STATE BANK OF INDIA',
+      'HDFC BANK',
+      'ICICI BANK',
+      'AXIS BANK',
+      'KOTAK MAHINDRA BANK',
+      'INDUSIND BANK',
+      'PUNJAB NATIONAL BANK',
+      'BANK OF BARODA',
+      'CANARA BANK',
+      'UNION BANK OF INDIA',
+      'YES BANK',
+      'IDFC FIRST BANK',
+      'INDIAN BANK',
+    ];
+    for (final bank in banks) {
+      if (text.contains(bank)) return bank;
+    }
+    return null;
   }
 }

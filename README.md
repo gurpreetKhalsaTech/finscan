@@ -87,7 +87,7 @@ flutter test
 |------|--------|
 | **CVV extraction** | CVV must never be stored or displayed per PCI-DSS guidelines. The regex exists in `RegexPatterns` for detection only; it is intentionally not surfaced in the UI or model. |
 | **Backend / cloud OCR** | Explicitly prohibited by the requirements. All processing is on-device. |
-| **15-digit Amex card format** | Amex uses a 4-6-5 grouping, which differs from the standard 4-4-4-4 regex. Amex network *detection* is included (prefix `3[47]`), but the separate group-pattern regex was skipped to avoid increasing false-positive surface area for a relatively rare format in the Indian market. |
+| **Card scanner gallery upload** | The card scanner is camera-only. The passbook scanner supports both camera and gallery (`image_picker`). Cards are typically scanned live (not photographed separately), so gallery upload was omitted for the card flow. |
 | **Multi-page passbook scanning** | Out of scope. The feature targets the front/data page of a passbook. Scanning transaction pages is a different problem domain. |
 | **Tablet / landscape layouts** | No layout requirement was specified. The UI is portrait-first and functional on tablets but not optimised. |
 | **Passbook account number masking** | Account numbers on passbooks are typically shared openly (e.g. for NEFT/UPI). Unlike card numbers, masking them would reduce usability with no security benefit in this context. |
@@ -117,4 +117,4 @@ State is managed with Riverpod Notifiers. Navigation uses GoRouter with typed `e
 | **Parsing Logic (40%)** | Manual regex + heuristics for all fields; Luhn validation; OCR error correction; labeled-match-first strategy for ambiguous fields |
 | **Code Quality (25%)** | Feature-first folder structure; single-responsibility classes; no business logic in widgets |
 | **OCR + Camera (20%)** | ML Kit on-device OCR; live camera with overlay guide; gallery fallback for passbook |
-| **Tests (15%)** | 13 unit tests across `LuhnValidator`, `CardParser`, `PassbookParser`, and home screen widget — all passing |
+| **Tests (15%)** | 59 unit tests across `LuhnValidator` (12), `CardParser` (25), `PassbookParser` (22) — all passing |
