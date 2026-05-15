@@ -19,7 +19,9 @@ class LuhnValidator {
   static bool isValid(String cardNumber) {
     final digits = cardNumber.replaceAll(RegExp(r'\D'), '');
 
-    if (digits.isEmpty) return false;
+    if (digits.length < 12) return false;
+    // All-zeros is not a real card (sum = 0 passes mod-10 trivially).
+    if (RegExp(r'^0+$').hasMatch(digits)) return false;
 
     int sum = 0;
     bool shouldDouble = false;

@@ -29,15 +29,17 @@ class CardParser {
   static CardDetails parseCard(String rawText) {
     if (rawText.trim().isEmpty) return const CardDetails();
 
-    // Step 1: Normalise whitespace and uppercase
-    final normalised = StringUtils.normaliseSpaces(rawText.toUpperCase());
+    // Step 1: Safe OCR digit fix (O→0, l→1) BEFORE uppercase
+    // This ensures lowercase 'l' from OCR is corrected to '1' before it becomes 'L'.
+    final ocrFixed = StringUtils.fixOcrDigitAmbiguity(rawText);
 
-    // Step 2: Safe OCR digit fix (O→0, l→1 only)
-    final ocrFixed = StringUtils.fixOcrDigitAmbiguity(normalised);
+    // Step 2: Normalise whitespace and uppercase
+    final normalised = StringUtils.normaliseSpaces(ocrFixed.toUpperCase());
 
     // Step 3: Extract each field
-    final cardNumber = _extractCardNumber(ocrFixed, normalised);
-    final expiryDate = _extractExpiry(ocrFixed);
+    // Use normalised (all-caps, single-spaced) for extraction
+    final cardNumber = _extractCardNumber(normalised);
+    final expiryDate = _extractExpiry(normalised);
     final cardHolderName = _extractName(normalised);
 
     // Step 4: Validate card
@@ -65,29 +67,24 @@ class CardParser {
 
   // ── Card Number ──────────────────────────────────────────────
 
-  static String? _extractCardNumber(String ocrFixed, String original) {
+  static String? _extractCardNumber(String text) {
+    // ── Step 1: Build exclusion set (Phone/Toll-free numbers) ──
+    final Set<String> excluded = {};
+    for (final m in RegexPatterns.tollFreeNumber.allMatches(text)) {
+      excluded.add(StringUtils.digitsOnly(m.group(0) ?? ''));
+    }
+
     final candidates = <String>[];
 
-    // Try OCR-fixed text first
-    for (final match in RegexPatterns.cardNumber.allMatches(ocrFixed)) {
+    for (final match in RegexPatterns.cardNumber.allMatches(text)) {
       final raw = match.group(0) ?? '';
       final digits = StringUtils.digitsOnly(raw);
+
+      if (excluded.contains(digits)) continue;
+
       if (digits.length >= AppConstants.minCardNumberLength &&
           digits.length <= AppConstants.maxCardNumberLength) {
         candidates.add(digits);
-      }
-    }
-
-    // If nothing valid, try aggressive OCR fix on raw segments
-    if (candidates.isEmpty) {
-      for (final match in RegexPatterns.cardNumber.allMatches(original)) {
-        final raw = match.group(0) ?? '';
-        final fixed = StringUtils.fixOcrNumericErrors(raw);
-        final digits = StringUtils.digitsOnly(fixed);
-        if (digits.length >= AppConstants.minCardNumberLength &&
-            digits.length <= AppConstants.maxCardNumberLength) {
-          candidates.add(digits);
-        }
       }
     }
 

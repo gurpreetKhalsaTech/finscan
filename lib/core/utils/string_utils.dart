@@ -85,7 +85,23 @@ class StringUtils {
     if (digits.length < 4) return '*' * digits.length;
     final masked =
         '${'*' * (digits.length - 4)}${digits.substring(digits.length - 4)}';
-    return formatCardNumber(masked);
+    // Format with group spaces without stripping asterisks (formatCardNumber
+    // would discard them via digitsOnly).
+    final buffer = StringBuffer();
+    if (masked.length == 15) {
+      buffer
+        ..write(masked.substring(0, 4))
+        ..write(' ')
+        ..write(masked.substring(4, 10))
+        ..write(' ')
+        ..write(masked.substring(10));
+    } else {
+      for (int i = 0; i < masked.length; i++) {
+        if (i > 0 && i % 4 == 0) buffer.write(' ');
+        buffer.write(masked[i]);
+      }
+    }
+    return buffer.toString();
   }
 
   // ── Text Cleaning ─────────────────────────────────────────────

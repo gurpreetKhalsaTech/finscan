@@ -13,8 +13,9 @@ class RegexPatterns {
 
   /// Standard 16-digit card (Visa, MC, RuPay) with optional separators.
   /// Also handles 15-digit Amex (4-6-5 grouping).
+  /// We use [ \-] instead of \s to prevent matching across newlines.
   static final cardNumber = RegExp(
-    r'\b(\d{4}[\s\-]?\d{6}[\s\-]?\d{5}|\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4})\b',
+    r'\b(\d{4}[ \-]?\d{6}[ \-]?\d{5}|\d{4}[ \-]?\d{4}[ \-]?\d{4}[ \-]?\d{4})\b',
   );
 
   /// Expiry date — handles:
@@ -35,7 +36,7 @@ class RegexPatterns {
     r'(?:(?:SB|CA|OD|CC)\s+)?'
     r'(?:A(?:\/C|CC(?:OUNT)?|CCT)|ACCOUNT)'
     r'(?:\s*(?:NO\.?|NUM(?:BER)?))?'
-    r'[\s\.\:\-]+(\d[\d\s\-]{7,22}\d)',
+    r'[\s\.\:\-]+(\d[\d \-]{7,22}\d)',
     caseSensitive: false,
   );
 
@@ -63,7 +64,7 @@ class RegexPatterns {
   /// Phone / mobile number label — must be excluded.
   static final labeledPhoneNumber = RegExp(
     r'(?:PHONE|MOBILE|MOB\.?|PH\.?|TEL\.?|TELEPHONE|CONTACT)(?:\s*NO\.?)?'
-    r'[\s\.\:\-]+([\d\s\-\+]{7,15})',
+    r'[\s\.\:\-]+([\d \-\+]{7,15})',
     caseSensitive: false,
   );
 
@@ -88,7 +89,7 @@ class RegexPatterns {
   /// Fallback: any standalone 9–18 digit number.
   /// Also matches spaced groups: "1141 2952 622" → cleaned to "11412952622".
   static final accountNumber = RegExp(
-    r'\b\d[\d\s\-]{8,22}\d\b',
+    r'\b\d[\d \-]{8,22}\d\b',
   );
 
   // ── Common ───────────────────────────────────────────────────
@@ -108,19 +109,20 @@ class RegexPatterns {
 
   /// Labeled name — handles both UPPERCASE and Title Case names.
   /// HDFC/ICICI passbooks often print names in title case.
+  /// We exclude newlines from the name match to prevent over-capturing.
   static final labeledName = RegExp(
     r'(?:NAME|A\/C\s*HOLDER(?:\s*NAME)?'
     r'|ACCOUNT\s*HOLDER(?:\s*NAME)?'
     r'|CARD\s*HOLDER(?:\s*NAME)?'
     r'|HOLDER\s*NAME)'
-    r'[\s\.\:\-]+([A-Za-z][A-Za-z\s\,\.]{2,60})',
+    r'[\s\.\:\-]+([A-Za-z][A-Za-z \t\,\.]{2,60})',
     caseSensitive: false,
   );
 
   /// Customer service / toll-free phone numbers — exclude from all number matching.
   /// e.g. "1800 425 00 000" or "1860 267 7777" on card backs.
   static final tollFreeNumber = RegExp(
-    r'\b(?:1800|1860|1900|0124|022|011|080|044|033)\s*\d[\d\s\-]{6,15}\b',
+    r'\b(?:1800|1860|1900|0124|022|011|080|044|033)[\s\-]*\d[\d \-]{6,15}\b',
   );
 
   /// Date patterns — exclude from number matching.
