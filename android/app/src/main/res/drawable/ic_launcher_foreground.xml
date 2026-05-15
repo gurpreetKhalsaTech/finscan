@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Card Shape -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,40C24,37.79 25.79,36 28,36H80C82.21,36 84,37.79 84,40V68C84,70.21 82.21,72 80,72H28C25.79,72 24,70.21 24,68V40Z" />
+
+    <!-- Card Stripe -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M24,44H84V52H24V44Z" />
+
+    <!-- Chip -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M30,56H40V64H30V56Z" />
+
+    <!-- Scan Line (Cyan) -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M20,53H88V55H20V53Z" />
+
+    <!-- Scan Frame Corners -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M18,34V24H28V27H21V34H18ZM18,74V84H28V81H21V74H18ZM80,24V27H87V34H90V24H80ZM87,74V81H80V84H90V74H87Z" />
+</vector>
